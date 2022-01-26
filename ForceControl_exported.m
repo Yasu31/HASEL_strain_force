@@ -182,7 +182,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
         function storeData(app, ~, ~)
             % This function is called every n = scansAvailableFcnCount data
             % points read by the DAQ
-            global d kF kL voltageArr forceArr lengthArr scanCount lastDataIndex
+            global d kF kL voltageArr forceArr lengthArr lengthArr_L scanCount lastDataIndex
             
             numScansAvailable = d.NumScansAvailable;
             if numScansAvailable == 0
@@ -209,7 +209,10 @@ classdef ForceControl_exported < matlab.apps.AppBase
             displacement = scanData(:, 3);
             lengthArr(startIndex: endIndex) = displacement;
                 % channel 3 is length input (in volts)
-
+            displacement = scanData(:, 4);
+            lengthArr_L(startIndex: endIndex) = displacement;
+                % channel 4 is length input (in volts)
+                
             % Plot data every cycle
             x = linspace(cast(startIndex, 'double'), cast(endIndex, 'double'), length(force));
             yyaxis(app.UIAxes, 'left');
@@ -217,7 +220,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             yyaxis(app.UIAxes, 'right');
             plot(app.UIAxes, x, force*kF, '-');
             
-            trip = scanData(end, 4);
+            trip = scanData(end, 5);
                 % channel 4 is limit/trip status
             if trip < 4 && app.MonitorlimittripstatusCheckBox.Value
                 app.Lamp.Color = 'red';
@@ -239,6 +242,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             % DAQ Dev1 ai0 = Voltage monitor from Trek
             % DAQ Dev1 ai1 = Force monitor from muscle tester
             % DAQ Dev1 ai2 = Displacement monitor from muscle tester
+            % DAQ Dev1 ai3 = Displacement monitor form Laser sensor
 
             global d kF kL kV
             
@@ -271,6 +275,8 @@ classdef ForceControl_exported < matlab.apps.AppBase
                 % MT force out
             addinput(d, "Dev1", "ai2", "Voltage");
                 % MT length out
+            addinput(d, "Dev1", "ai3", "Voltage");
+                % LS length out
             addinput(d, "Dev1", "ai7", "Voltage");
                 % TREK limit/trip status
         end
@@ -288,7 +294,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
 
         % Value changed function: GoButton
         function GoButtonValueChanged(app, event)
-            global d voltageArr forceArr lengthArr scanCount lastDataIndex...
+            global d voltageArr forceArr lengthArr lengthArr_L scanCount lastDataIndex...
                 kV kF kL
             
             if app.GoButton.Value
@@ -341,6 +347,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
                 voltageArr = zeros(length(fullSignal(:, 1)), 1);
                 forceArr = voltageArr;
                 lengthArr = voltageArr;
+                lengthArr_L = voltageArr;
                 
                 scanCount = 0;
                 preload(d, fullSignal);
@@ -362,7 +369,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
                     time = linspace(0, length(voltageArr)/app.SamplerateEditField.Value, length(voltageArr)).';
                     rawFilename = fullfile(app.SelectfilepathEditField.Value, app.RawfilenameEditField.Value);
                     writetable(table(time(1:lastDataIndex), voltageArr(1:lastDataIndex)*kV, forceArr(1:lastDataIndex)*kF,...
-                        lengthArr(1:lastDataIndex)*kL, 'VariableNames', {'Time (s)', 'Voltage (kV)', 'Length (mm)', 'Force (N)'}), rawFilename);
+                        lengthArr(1:lastDataIndex)*kL, lengthArr_L(1:lastDataIndex)*1, 'VariableNames', {'Time (s)', 'Voltage (kV)',  'Force (N)', 'Length_MT (mm)', 'Length_LS (mm)'}), rawFilename);
                 end
                 
                 processedCurve = generateFSCurve(app);
@@ -556,7 +563,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             % Create ao0ao1ai0ai1ai2Label
             app.ao0ao1ai0ai1ai2Label = uilabel(app.SetupPanel);
             app.ao0ao1ai0ai1ai2Label.Position = [12 11 180 143];
-            app.ao0ao1ai0ai1ai2Label.Text = {'AO0: TREK "voltage in"'; 'AO1: Muscle tester "force in"'; 'AI0: TREK "voltage monitor"'; 'AI1: Muscle tester "force out"'; 'AI2: Muscle tester "length out"'; 'AI7: TREK "limit/trip status"'; ''; 'Setup:'; '1) Turn length knob to 10 V'; '2) Turn force knob to 0 V'; ''};
+            app.ao0ao1ai0ai1ai2Label.Text = {'AO0: TREK "voltage in"'; 'AO1: Muscle tester "force in"'; 'AI0: TREK "voltage monitor"'; 'AI1: Muscle tester "force out"'; 'AI2: Muscle tester "length out"'; 'AI3: Laser sensor "length out"'; ''; 'Setup:'; '1) Turn length knob to 10 V'; '2) Turn force knob to 0 V'; ''};
 
             % Create VoltageParametersPanel
             app.VoltageParametersPanel = uipanel(app.UIFigure);
@@ -783,9 +790,9 @@ classdef ForceControl_exported < matlab.apps.AppBase
             % Create MonitorlimittripstatusCheckBox
             app.MonitorlimittripstatusCheckBox = uicheckbox(app.UIFigure);
             app.MonitorlimittripstatusCheckBox.ValueChangedFcn = createCallbackFcn(app, @MonitorlimittripstatusCheckBoxValueChanged, true);
+            app.MonitorlimittripstatusCheckBox.Enable = 'off';
             app.MonitorlimittripstatusCheckBox.Text = 'Monitor limit/trip status';
             app.MonitorlimittripstatusCheckBox.Position = [645 220 142 22];
-            app.MonitorlimittripstatusCheckBox.Value = true;
 
             % Create Lamp
             app.Lamp = uilamp(app.UIFigure);
