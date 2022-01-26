@@ -24,6 +24,9 @@ classdef ForceControl_exported < matlab.apps.AppBase
         ReversepolarityCheckBox         matlab.ui.control.CheckBox
         SignaltypeLabel                 matlab.ui.control.Label
         SignaltypeDropDown              matlab.ui.control.DropDown
+        RampangleEditFieldLabel         matlab.ui.control.Label
+        RampangleEditField              matlab.ui.control.NumericEditField
+        kVsLabel                        matlab.ui.control.Label
         CalibrationPanel                matlab.ui.container.Panel
         SamplerateEditFieldLabel        matlab.ui.control.Label
         SamplerateEditField             matlab.ui.control.NumericEditField
@@ -76,20 +79,27 @@ classdef ForceControl_exported < matlab.apps.AppBase
             
             % Build voltage signal
             switch app.SignaltypeDropDown.Value
-                case 'Ramped square'
+                case 'Step'
                     numHold = floor(cycleSamples/3);
-                    numRamp = ceil(cycleSamples/6);
-                        % 1/3 zero, 1/6 ramp up, 1/3 max, 1/6 ramp down
+                    numRamp = 1;
                     
                     voltageCycle(numHold + 1: numHold + numRamp, 1) = linspace(0, maxVoltage, numRamp).';
                     voltageCycle(numHold + numRamp + 1: 2*numHold + numRamp, 1) = maxVoltage;
                     voltageCycle(2*numHold + numRamp + 1: end, 1) = linspace(maxVoltage, 0, numRamp).';
-                        % this end is trying to terminate the switch
+                    % this end is trying to terminate the switch
+                case 'Ramped square'
+                    numHold = floor(cycleSamples/3);
+                    numRamp = ceil(app.MaxvoltageEditField.Value/app.RampangleEditField.Value*app.SamplerateEditField.Value);
+                    
+                    voltageCycle(numHold + 1: numHold + numRamp, 1) = linspace(0, maxVoltage, numRamp).';
+                    voltageCycle(numHold + numRamp + 1: 2*numHold + numRamp, 1) = maxVoltage;
+                    voltageCycle(2*numHold + numRamp + 1: 2*numHold + 2*numRamp, 1) = linspace(maxVoltage, 0, numRamp).';
+                    % this end is trying to terminate the switch
                 otherwise
                     voltageCycle(1:round(cycleSamples/2), 1) = linspace(0, maxVoltage, round(cycleSamples/2)).';
                     voltageCycle(round(cycleSamples/2) + 1: end, 1) = linspace(maxVoltage, 0, floor(cycleSamples/2)).';
-                        % I don't actually think we need to bother
-                        % rounding? Has to do with sample rate
+                    % I don't actually think we need to bother
+                    % rounding? Has to do with sample rate
             end
             
             voltageSignal(1: cycleSamples, 1) = voltageCycle;
@@ -131,32 +141,32 @@ classdef ForceControl_exported < matlab.apps.AppBase
             numForceSteps = app.NumberofforcestepsEditField.Value;
             
             smoothingFactor = 100;
-                % Need to make sure this is OK
+            % Need to make sure this is OK
             processedForce = zeros(numForceSteps, 1);
             processedStroke = zeros(numForceSteps, 1);
             
             displacement = medfilt1(lengthArr, smoothingFactor);
-
+            
             samplesPerVolt = sampleRate/frequency; % num samples per volt
             samplesPerForceStep = samplesPerVolt * voltsPerStep; % num samples per displacement step
             
             temp = zeros(voltsPerStep, 1);
             for i = 1: numForceSteps
-    
+                
                 startIndex = (i - 1)*samplesPerForceStep + 1;
                 endIndex = i*samplesPerForceStep;
                 processedForce(i) = mean(forceArr(startIndex: endIndex)) * kF;
-    
+                
                 for j = 1: voltsPerStep
                     startIndex2 = startIndex + (j - 1)*samplesPerVolt;
                     midIndex2 = startIndex2 + (1/2)*samplesPerVolt;
                     endIndex2 = (startIndex - 1) + j*samplesPerVolt;
                     temp(j) = (max(displacement(startIndex2: midIndex2)) - min(displacement(midIndex2: endIndex2))) * kL;
-
+                    
                 end
                 processedStroke(i) = mean(temp);
             end
-
+            
             processedCurve = [processedStroke, processedForce];
         end
         
@@ -182,37 +192,37 @@ classdef ForceControl_exported < matlab.apps.AppBase
         function storeData(app, ~, ~)
             % This function is called every n = scansAvailableFcnCount data
             % points read by the DAQ
-            global d kF kL voltageArr forceArr lengthArr lengthArr_L scanCount lastDataIndex
+            global d kF kL voltageArr forceArr lengthArr triggerArr scanCount lastDataIndex
             
             numScansAvailable = d.NumScansAvailable;
             if numScansAvailable == 0
                 return;
             end
             scanCount = scanCount + 1;
-
+            
             startIndex = (scanCount - 1)*d.ScansAvailableFcnCount + 1;
-                % location to put next data
+            % location to put next data
             endIndex = (startIndex - 1) + numScansAvailable;
-                % location of end of new data
+            % location of end of new data
             lastDataIndex = endIndex;
-                % this global index tells the program where the last data
-                % point is, in case of test interruption
+            % this global index tells the program where the last data
+            % point is, in case of test interruption
             
             % Read available data from DAQ
-            scanData = read(d, numScansAvailable, "OutputFormat", "Matrix");           
+            scanData = read(d, numScansAvailable, "OutputFormat", "Matrix");
             voltage = scanData(:, 1);
             voltageArr(startIndex: endIndex) = voltage;
-                % channel 1 is voltage input (in volts)
+            % channel 1 is voltage input (in volts)
             force = scanData(:, 2);
             forceArr(startIndex: endIndex) = force;
-                % channel 2 is force input (in volts)
+            % channel 2 is force input (in volts)
             displacement = scanData(:, 3);
             lengthArr(startIndex: endIndex) = displacement;
-                % channel 3 is length input (in volts)
-            displacement = scanData(:, 4);
-            lengthArr_L(startIndex: endIndex) = displacement;
-                % channel 4 is length input (in volts)
-                
+            % channel 3 is length input (in volts)
+            trigger = scanData(:, 5);
+            triggerArr(startIndex: endIndex) = trigger;
+            % channel 5 is trigger input (in volts) <- ch4 is used for trek limit <- currently not used
+            
             % Plot data every cycle
             x = linspace(cast(startIndex, 'double'), cast(endIndex, 'double'), length(force));
             yyaxis(app.UIAxes, 'left');
@@ -220,8 +230,8 @@ classdef ForceControl_exported < matlab.apps.AppBase
             yyaxis(app.UIAxes, 'right');
             plot(app.UIAxes, x, force*kF, '-');
             
-            trip = scanData(end, 5);
-                % channel 4 is limit/trip status
+            trip = scanData(end, 4);
+            % channel 4 is limit/trip status
             if trip < 4 && app.MonitorlimittripstatusCheckBox.Value
                 app.Lamp.Color = 'red';
                 app.GoButton.Value = 0;
@@ -242,14 +252,13 @@ classdef ForceControl_exported < matlab.apps.AppBase
             % DAQ Dev1 ai0 = Voltage monitor from Trek
             % DAQ Dev1 ai1 = Force monitor from muscle tester
             % DAQ Dev1 ai2 = Displacement monitor from muscle tester
-            % DAQ Dev1 ai3 = Displacement monitor form Laser sensor
-
+            
             global d kF kL kV
             
             kV = app.TREKvoltageconstantkVEditField.Value;
             kF = app.MTforceconstantkFEditField.Value;
             kL = app.MTlengthconstantkLEditField.Value;
-                        
+            
             app.RawfilenameEditField.Enable = 0;
             app.GoButton.Text = 'Go (inactive)';
             
@@ -259,26 +268,29 @@ classdef ForceControl_exported < matlab.apps.AppBase
             d.Rate = app.SamplerateEditField.Value;
             
             d.ScansAvailableFcn = @(src, event) storeData(app, src, event);
-                % call storeData fcn when scans are available
-
-            d.ScansAvailableFcnCount = app.SamplerateEditField.Value/app.VoltagefrequencyEditField.Value;
-                % by default, call storeData every cycle
-
-            addoutput(d, "Dev1", "ao0", "Voltage");
-                % TREK voltage input
-            addoutput(d, "Dev1", "ao1", "Voltage");
-                % MT force input
+            % call storeData fcn when scans are available
             
-            addinput(d, "Dev1", "ai0", "Voltage");
-                % TREK voltage monitor
-            addinput(d, "Dev1", "ai1", "Voltage");
-                % MT force out
-            addinput(d, "Dev1", "ai2", "Voltage");
-                % MT length out
-            addinput(d, "Dev1", "ai3", "Voltage");
-                % LS length out
-            addinput(d, "Dev1", "ai7", "Voltage");
-                % TREK limit/trip status
+            d.ScansAvailableFcnCount = app.SamplerateEditField.Value/app.VoltagefrequencyEditField.Value;
+            % by default, call storeData every cycle
+            
+            devName = "Dev1";
+            
+            addoutput(d, devName, "ao0", "Voltage");
+            % TREK voltage input
+            addoutput(d, devName, "ao1", "Voltage");
+            % MT force input
+            
+            addinput(d, devName, "ai0", "Voltage");
+            % TREK voltage monitor
+            addinput(d, devName, "ai1", "Voltage");
+            % MT force out
+            addinput(d, devName, "ai2", "Voltage");
+            % MT length out
+            addinput(d, devName, "ai7", "Voltage");
+            % TREK limit/trip status
+            addinput(d, devName, "ai6", "Voltage");
+            % trigger
+            
         end
 
         % Button pushed function: BrowseButton
@@ -294,7 +306,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
 
         % Value changed function: GoButton
         function GoButtonValueChanged(app, event)
-            global d voltageArr forceArr lengthArr lengthArr_L scanCount lastDataIndex...
+            global d voltageArr forceArr lengthArr triggerArr scanCount lastDataIndex...
                 kV kF kL
             
             if app.GoButton.Value
@@ -347,7 +359,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
                 voltageArr = zeros(length(fullSignal(:, 1)), 1);
                 forceArr = voltageArr;
                 lengthArr = voltageArr;
-                lengthArr_L = voltageArr;
+                triggerArr = voltageArr;
                 
                 scanCount = 0;
                 preload(d, fullSignal);
@@ -365,23 +377,40 @@ classdef ForceControl_exported < matlab.apps.AppBase
                     storeData(app, d, 0);
                 end
                 
+                switch app.SignaltypeDropDown.Value
+                    case 'Step'
+                        textInputPattern = 'Stepinput';
+                    case 'Ramped square'
+                        textInputPattern = ['Rampedsquare_', num2str(app.RampangleEditField.Value, '%02.0fkVs')];
+                    case 'Triangle'
+                        textInputPattern = 'Triangle';
+                end
+                
+                textPara = [...
+                    num2str(app.VoltagefrequencyEditField.Value*10, '_%02.0f'), 'Hz_',...
+                    num2str(app.MaxvoltageEditField.Value, '%01.0f'), 'kV_',...
+                    textInputPattern, '_', datestr(now,'yyyy_mm_dd_HHMM')];
+                processedFilename = fullfile(app.SelectfilepathEditField.Value, [app.ProcessedfilenameEditField.Value, textPara]);
+                
                 if app.SaverawfileCheckBox.Value
                     time = linspace(0, length(voltageArr)/app.SamplerateEditField.Value, length(voltageArr)).';
-                    rawFilename = fullfile(app.SelectfilepathEditField.Value, app.RawfilenameEditField.Value);
-                    writetable(table(time(1:lastDataIndex), voltageArr(1:lastDataIndex)*kV, forceArr(1:lastDataIndex)*kF,...
-                        lengthArr(1:lastDataIndex)*kL, lengthArr_L(1:lastDataIndex)*1, 'VariableNames', {'Time (s)', 'Voltage (kV)',  'Force (N)', 'Length_MT (mm)', 'Length_LS (mm)'}), rawFilename);
+                    %                     rawFilename = fullfile(app.SelectfilepathEditField.Value, app.RawfilenameEditField.Value);
+                    rawFilename = fullfile(app.SelectfilepathEditField.Value, ['raw_', app.ProcessedfilenameEditField.Value, textPara]);
+                    %                     writetable(table(time(1:lastDataIndex), voltageArr(1:lastDataIndex)*kV, forceArr(1:lastDataIndex)*kF,...
+                    writetable(table(time(1:lastDataIndex), voltageArr(1:lastDataIndex)*kV, forceArr(1:lastDataIndex)*-kF,...
+                        lengthArr(1:lastDataIndex)*kL, triggerArr(1: lastDataIndex), 'VariableNames', {'Time [s]', 'Voltage [kV]', 'Force [N]', 'Length [mm]', 'TriggerSignal [V]'}), rawFilename);
                 end
                 
                 processedCurve = generateFSCurve(app);
                 
-                processedFilename = fullfile(app.SelectfilepathEditField.Value, app.ProcessedfilenameEditField.Value);
+                %                 processedFilename = fullfile(app.SelectfilepathEditField.Value, [app.ProcessedfilenameEditField.Value, textPara]);
                 writetable(table(processedCurve(:, 1), processedCurve(:, 2), 'VariableNames',...
                     {'Stroke (mm)', 'Force (N)'}), processedFilename);
                 
                 % Fush the DAQ and ensure zero voltage
                 flush(d);
                 write(d, [0, 0]);
-
+                
                 app.UIAxes.YAxis(2).Visible = 'off';
                 yyaxis(app.UIAxes, 'right')
                 cla(app.UIAxes);
@@ -415,8 +444,8 @@ classdef ForceControl_exported < matlab.apps.AppBase
 
         % Value changed function: TREKvoltageconstantkVEditField
         function TREKvoltageconstantkVEditFieldValueChanged(app, event)
-           global kV
-           kV = app.TREKvoltageconstantkVEditField.Value;
+            global kV
+            kV = app.TREKvoltageconstantkVEditField.Value;
         end
 
         % Value changed function: MTforceconstantkFEditField
@@ -488,6 +517,12 @@ classdef ForceControl_exported < matlab.apps.AppBase
         function SignaltypeDropDownValueChanged(app, event)
             buildPreview(app);
         end
+
+        % Value changed function: RampangleEditField
+        function RampangleEditFieldValueChanged(app, event)
+            buildPreview(app);
+            
+        end
     end
 
     % Component initialization
@@ -535,6 +570,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             % Create RawfilenameEditField
             app.RawfilenameEditField = uieditfield(app.UIFigure, 'text');
             app.RawfilenameEditField.Position = [627 350 173 22];
+            app.RawfilenameEditField.Value = 'raw_';
 
             % Create ProcessedfilenameLabel
             app.ProcessedfilenameLabel = uilabel(app.UIFigure);
@@ -545,12 +581,14 @@ classdef ForceControl_exported < matlab.apps.AppBase
             % Create ProcessedfilenameEditField
             app.ProcessedfilenameEditField = uieditfield(app.UIFigure, 'text');
             app.ProcessedfilenameEditField.Position = [628 385 173 22];
+            app.ProcessedfilenameEditField.Value = '20x60_EUP_FR3_60';
 
             % Create SaverawfileCheckBox
             app.SaverawfileCheckBox = uicheckbox(app.UIFigure);
             app.SaverawfileCheckBox.ValueChangedFcn = createCallbackFcn(app, @SaverawfileCheckBoxValueChanged, true);
             app.SaverawfileCheckBox.Text = 'Save raw file';
             app.SaverawfileCheckBox.Position = [707 319 90 22];
+            app.SaverawfileCheckBox.Value = true;
 
             % Create SetupPanel
             app.SetupPanel = uipanel(app.UIFigure);
@@ -562,8 +600,8 @@ classdef ForceControl_exported < matlab.apps.AppBase
 
             % Create ao0ao1ai0ai1ai2Label
             app.ao0ao1ai0ai1ai2Label = uilabel(app.SetupPanel);
-            app.ao0ao1ai0ai1ai2Label.Position = [12 11 180 143];
-            app.ao0ao1ai0ai1ai2Label.Text = {'AO0: TREK "voltage in"'; 'AO1: Muscle tester "force in"'; 'AI0: TREK "voltage monitor"'; 'AI1: Muscle tester "force out"'; 'AI2: Muscle tester "length out"'; 'AI3: Laser sensor "length out"'; ''; 'Setup:'; '1) Turn length knob to 10 V'; '2) Turn force knob to 0 V'; ''};
+            app.ao0ao1ai0ai1ai2Label.Position = [12 11 175 143];
+            app.ao0ao1ai0ai1ai2Label.Text = {'AO0: TREK "voltage in"'; 'AO1: Muscle tester "force in"'; 'AI0: TREK "voltage monitor"'; 'AI1: Muscle tester "force out"'; 'AI2: Muscle tester "length out"'; 'AI6: Trigger signal'; ''; 'Setup:'; '1) Turn length knob to 10 V'; '2) Turn force knob to 0 V'; ''};
 
             % Create VoltageParametersPanel
             app.VoltageParametersPanel = uipanel(app.UIFigure);
@@ -584,7 +622,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             app.VoltagefrequencyEditField.Limits = [0 Inf];
             app.VoltagefrequencyEditField.ValueChangedFcn = createCallbackFcn(app, @VoltagefrequencyEditFieldValueChanged, true);
             app.VoltagefrequencyEditField.Position = [123 134 33 22];
-            app.VoltagefrequencyEditField.Value = 0.25;
+            app.VoltagefrequencyEditField.Value = 0.5;
 
             % Create HzLabel_2
             app.HzLabel_2 = uilabel(app.VoltageParametersPanel);
@@ -602,7 +640,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             app.MaxvoltageEditField.Limits = [0 20];
             app.MaxvoltageEditField.ValueChangedFcn = createCallbackFcn(app, @MaxvoltageEditFieldValueChanged, true);
             app.MaxvoltageEditField.Position = [123 96 31 22];
-            app.MaxvoltageEditField.Value = 6;
+            app.MaxvoltageEditField.Value = 7;
 
             % Create kVLabel
             app.kVLabel = uilabel(app.VoltageParametersPanel);
@@ -613,21 +651,39 @@ classdef ForceControl_exported < matlab.apps.AppBase
             app.ReversepolarityCheckBox = uicheckbox(app.VoltageParametersPanel);
             app.ReversepolarityCheckBox.ValueChangedFcn = createCallbackFcn(app, @ReversepolarityCheckBoxValueChanged, true);
             app.ReversepolarityCheckBox.Text = 'Reverse polarity';
-            app.ReversepolarityCheckBox.Position = [39 12 109 22];
+            app.ReversepolarityCheckBox.Position = [43 1 109 22];
             app.ReversepolarityCheckBox.Value = true;
 
             % Create SignaltypeLabel
             app.SignaltypeLabel = uilabel(app.VoltageParametersPanel);
             app.SignaltypeLabel.HorizontalAlignment = 'right';
-            app.SignaltypeLabel.Position = [9 52 39 28];
+            app.SignaltypeLabel.Position = [9 64 39 28];
             app.SignaltypeLabel.Text = {'Signal'; 'type'};
 
             % Create SignaltypeDropDown
             app.SignaltypeDropDown = uidropdown(app.VoltageParametersPanel);
-            app.SignaltypeDropDown.Items = {'Ramped square', 'Triangle'};
+            app.SignaltypeDropDown.Items = {'Step', 'Ramped square', 'Triangle'};
             app.SignaltypeDropDown.ValueChangedFcn = createCallbackFcn(app, @SignaltypeDropDownValueChanged, true);
-            app.SignaltypeDropDown.Position = [55 53 124 22];
-            app.SignaltypeDropDown.Value = 'Ramped square';
+            app.SignaltypeDropDown.Position = [55 65 124 22];
+            app.SignaltypeDropDown.Value = 'Step';
+
+            % Create RampangleEditFieldLabel
+            app.RampangleEditFieldLabel = uilabel(app.VoltageParametersPanel);
+            app.RampangleEditFieldLabel.HorizontalAlignment = 'right';
+            app.RampangleEditFieldLabel.Position = [38 38 70 22];
+            app.RampangleEditFieldLabel.Text = 'Ramp angle';
+
+            % Create RampangleEditField
+            app.RampangleEditField = uieditfield(app.VoltageParametersPanel, 'numeric');
+            app.RampangleEditField.Limits = [0 10000];
+            app.RampangleEditField.ValueChangedFcn = createCallbackFcn(app, @RampangleEditFieldValueChanged, true);
+            app.RampangleEditField.Position = [118 38 31 22];
+            app.RampangleEditField.Value = 25;
+
+            % Create kVsLabel
+            app.kVsLabel = uilabel(app.VoltageParametersPanel);
+            app.kVsLabel.Position = [151 38 29 22];
+            app.kVsLabel.Text = 'kV/s';
 
             % Create CalibrationPanel
             app.CalibrationPanel = uipanel(app.UIFigure);
@@ -700,7 +756,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             app.MTlengthconstantkLEditField.ValueChangedFcn = createCallbackFcn(app, @MTlengthconstantkLEditFieldValueChanged, true);
             app.MTlengthconstantkLEditField.Editable = 'off';
             app.MTlengthconstantkLEditField.Position = [99 13 45 22];
-            app.MTlengthconstantkLEditField.Value = 1.989;
+            app.MTlengthconstantkLEditField.Value = 1.93;
 
             % Create NVLabel
             app.NVLabel = uilabel(app.CalibrationPanel);
@@ -731,7 +787,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             app.MaxforceEditField.Limits = [0 90];
             app.MaxforceEditField.ValueChangedFcn = createCallbackFcn(app, @MaxforceEditFieldValueChanged, true);
             app.MaxforceEditField.Position = [114 134 28 22];
-            app.MaxforceEditField.Value = 10;
+            app.MaxforceEditField.Value = 30;
 
             % Create NLabel
             app.NLabel = uilabel(app.ForceParametersPanel);
@@ -750,7 +806,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             app.NumberofforcestepsEditField.RoundFractionalValues = 'on';
             app.NumberofforcestepsEditField.ValueChangedFcn = createCallbackFcn(app, @NumberofforcestepsEditFieldValueChanged, true);
             app.NumberofforcestepsEditField.Position = [114 96 28 22];
-            app.NumberofforcestepsEditField.Value = 11;
+            app.NumberofforcestepsEditField.Value = 16;
 
             % Create inclzeroLabel
             app.inclzeroLabel = uilabel(app.ForceParametersPanel);
@@ -763,7 +819,6 @@ classdef ForceControl_exported < matlab.apps.AppBase
             app.LogdistributionCheckBox.ValueChangedFcn = createCallbackFcn(app, @LogdistributionCheckBoxValueChanged, true);
             app.LogdistributionCheckBox.Text = 'Log distribution';
             app.LogdistributionCheckBox.Position = [42 13 103 22];
-            app.LogdistributionCheckBox.Value = true;
 
             % Create NumberofvoltcyclesperstepEditFieldLabel
             app.NumberofvoltcyclesperstepEditFieldLabel = uilabel(app.ForceParametersPanel);
