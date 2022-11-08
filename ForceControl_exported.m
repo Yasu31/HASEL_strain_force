@@ -3,56 +3,56 @@ classdef ForceControl_exported < matlab.apps.AppBase
     % Properties that correspond to app components
     properties (Access = public)
         UIFigure                        matlab.ui.Figure
-        BrowseButton                    matlab.ui.control.Button
-        GoButton                        matlab.ui.control.StateButton
-        SelectfilepathEditFieldLabel    matlab.ui.control.Label
-        SelectfilepathEditField         matlab.ui.control.EditField
-        RawfilenameEditFieldLabel       matlab.ui.control.Label
-        RawfilenameEditField            matlab.ui.control.EditField
-        ProcessedfilenameLabel          matlab.ui.control.Label
-        ProcessedfilenameEditField      matlab.ui.control.EditField
-        SaverawfileCheckBox             matlab.ui.control.CheckBox
+        Lamp                            matlab.ui.control.Lamp
+        MonitorlimittripstatusCheckBox  matlab.ui.control.CheckBox
+        PressStopwhentestiscompletedtosavedataLabel  matlab.ui.control.Label
+        ForceParametersPanel            matlab.ui.container.Panel
+        NumberofvoltcyclesperstepEditField  matlab.ui.control.NumericEditField
+        NumberofvoltcyclesperstepEditFieldLabel  matlab.ui.control.Label
+        LogdistributionCheckBox         matlab.ui.control.CheckBox
+        inclzeroLabel                   matlab.ui.control.Label
+        NumberofforcestepsEditField     matlab.ui.control.NumericEditField
+        NumberofforcestepsLabel         matlab.ui.control.Label
+        NLabel                          matlab.ui.control.Label
+        MaxforceEditField               matlab.ui.control.NumericEditField
+        MaxforceEditFieldLabel          matlab.ui.control.Label
+        CalibrationPanel                matlab.ui.container.Panel
+        mmVLabel                        matlab.ui.control.Label
+        NVLabel                         matlab.ui.control.Label
+        MTlengthconstantkLEditField     matlab.ui.control.NumericEditField
+        MTlengthconstantkLEditFieldLabel  matlab.ui.control.Label
+        MTforceconstantkFEditField      matlab.ui.control.NumericEditField
+        MTforceconstantkFEditFieldLabel  matlab.ui.control.Label
+        VkVLabel                        matlab.ui.control.Label
+        TREKvoltageconstantkVEditField  matlab.ui.control.NumericEditField
+        TREKvoltageconstantkVEditFieldLabel  matlab.ui.control.Label
+        HzLabel                         matlab.ui.control.Label
+        SamplerateEditField             matlab.ui.control.NumericEditField
+        SamplerateEditFieldLabel        matlab.ui.control.Label
+        VoltageParametersPanel          matlab.ui.container.Panel
+        kVsLabel                        matlab.ui.control.Label
+        RampangleEditField              matlab.ui.control.NumericEditField
+        RampangleEditFieldLabel         matlab.ui.control.Label
+        SignaltypeDropDown              matlab.ui.control.DropDown
+        SignaltypeLabel                 matlab.ui.control.Label
+        ReversepolarityCheckBox         matlab.ui.control.CheckBox
+        kVLabel                         matlab.ui.control.Label
+        MaxvoltageEditField             matlab.ui.control.NumericEditField
+        MaxvoltageEditFieldLabel        matlab.ui.control.Label
+        HzLabel_2                       matlab.ui.control.Label
+        VoltagefrequencyEditField       matlab.ui.control.NumericEditField
+        VoltagefrequencyEditFieldLabel  matlab.ui.control.Label
         SetupPanel                      matlab.ui.container.Panel
         ao0ao1ai0ai1ai2Label            matlab.ui.control.Label
-        VoltageParametersPanel          matlab.ui.container.Panel
-        VoltagefrequencyEditFieldLabel  matlab.ui.control.Label
-        VoltagefrequencyEditField       matlab.ui.control.NumericEditField
-        HzLabel_2                       matlab.ui.control.Label
-        MaxvoltageEditFieldLabel        matlab.ui.control.Label
-        MaxvoltageEditField             matlab.ui.control.NumericEditField
-        kVLabel                         matlab.ui.control.Label
-        ReversepolarityCheckBox         matlab.ui.control.CheckBox
-        SignaltypeLabel                 matlab.ui.control.Label
-        SignaltypeDropDown              matlab.ui.control.DropDown
-        RampangleEditFieldLabel         matlab.ui.control.Label
-        RampangleEditField              matlab.ui.control.NumericEditField
-        kVsLabel                        matlab.ui.control.Label
-        CalibrationPanel                matlab.ui.container.Panel
-        SamplerateEditFieldLabel        matlab.ui.control.Label
-        SamplerateEditField             matlab.ui.control.NumericEditField
-        HzLabel                         matlab.ui.control.Label
-        TREKvoltageconstantkVEditFieldLabel  matlab.ui.control.Label
-        TREKvoltageconstantkVEditField  matlab.ui.control.NumericEditField
-        VkVLabel                        matlab.ui.control.Label
-        MTforceconstantkFEditFieldLabel  matlab.ui.control.Label
-        MTforceconstantkFEditField      matlab.ui.control.NumericEditField
-        MTlengthconstantkLEditFieldLabel  matlab.ui.control.Label
-        MTlengthconstantkLEditField     matlab.ui.control.NumericEditField
-        NVLabel                         matlab.ui.control.Label
-        mmVLabel                        matlab.ui.control.Label
-        ForceParametersPanel            matlab.ui.container.Panel
-        MaxforceEditFieldLabel          matlab.ui.control.Label
-        MaxforceEditField               matlab.ui.control.NumericEditField
-        NLabel                          matlab.ui.control.Label
-        NumberofforcestepsLabel         matlab.ui.control.Label
-        NumberofforcestepsEditField     matlab.ui.control.NumericEditField
-        inclzeroLabel                   matlab.ui.control.Label
-        LogdistributionCheckBox         matlab.ui.control.CheckBox
-        NumberofvoltcyclesperstepEditFieldLabel  matlab.ui.control.Label
-        NumberofvoltcyclesperstepEditField  matlab.ui.control.NumericEditField
-        PressStopwhentestiscompletedtosavedataLabel  matlab.ui.control.Label
-        MonitorlimittripstatusCheckBox  matlab.ui.control.CheckBox
-        Lamp                            matlab.ui.control.Lamp
+        SaverawfileCheckBox             matlab.ui.control.CheckBox
+        ProcessedfilenameEditField      matlab.ui.control.EditField
+        ProcessedfilenameLabel          matlab.ui.control.Label
+        RawfilenameEditField            matlab.ui.control.EditField
+        RawfilenameEditFieldLabel       matlab.ui.control.Label
+        SelectfilepathEditField         matlab.ui.control.EditField
+        SelectfilepathEditFieldLabel    matlab.ui.control.Label
+        GoButton                        matlab.ui.control.StateButton
+        BrowseButton                    matlab.ui.control.Button
         UIAxes                          matlab.ui.control.UIAxes
     end
 
@@ -273,7 +273,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             d.ScansAvailableFcnCount = app.SamplerateEditField.Value/app.VoltagefrequencyEditField.Value;
             % by default, call storeData every cycle
             
-            devName = "Dev1";
+            devName = "Dev7";
             
             addoutput(d, devName, "ao0", "Voltage");
             % TREK voltage input
@@ -536,6 +536,17 @@ classdef ForceControl_exported < matlab.apps.AppBase
             app.UIFigure.Position = [100 100 822 489];
             app.UIFigure.Name = 'MATLAB App';
 
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.UIFigure);
+            title(app.UIAxes, 'Data')
+            xlabel(app.UIAxes, 'Time (s)')
+            ylabel(app.UIAxes, 'Voltage (kV)')
+            app.UIAxes.PlotBoxAspectRatio = [1.45226130653266 1 1];
+            app.UIAxes.XTickLabelRotation = 0;
+            app.UIAxes.YTickLabelRotation = 0;
+            app.UIAxes.ZTickLabelRotation = 0;
+            app.UIAxes.Position = [54 208 404 278];
+
             % Create BrowseButton
             app.BrowseButton = uibutton(app.UIFigure, 'push');
             app.BrowseButton.ButtonPushedFcn = createCallbackFcn(app, @BrowseButtonPushed, true);
@@ -581,7 +592,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             % Create ProcessedfilenameEditField
             app.ProcessedfilenameEditField = uieditfield(app.UIFigure, 'text');
             app.ProcessedfilenameEditField.Position = [628 385 173 22];
-            app.ProcessedfilenameEditField.Value = '20x60_EUP_FR3_60';
+            app.ProcessedfilenameEditField.Value = 'test';
 
             % Create SaverawfileCheckBox
             app.SaverawfileCheckBox = uicheckbox(app.UIFigure);
@@ -665,7 +676,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             app.SignaltypeDropDown.Items = {'Step', 'Ramped square', 'Triangle'};
             app.SignaltypeDropDown.ValueChangedFcn = createCallbackFcn(app, @SignaltypeDropDownValueChanged, true);
             app.SignaltypeDropDown.Position = [55 65 124 22];
-            app.SignaltypeDropDown.Value = 'Step';
+            app.SignaltypeDropDown.Value = 'Ramped square';
 
             % Create RampangleEditFieldLabel
             app.RampangleEditFieldLabel = uilabel(app.VoltageParametersPanel);
@@ -678,7 +689,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             app.RampangleEditField.Limits = [0 10000];
             app.RampangleEditField.ValueChangedFcn = createCallbackFcn(app, @RampangleEditFieldValueChanged, true);
             app.RampangleEditField.Position = [118 38 31 22];
-            app.RampangleEditField.Value = 25;
+            app.RampangleEditField.Value = 35;
 
             % Create kVsLabel
             app.kVsLabel = uilabel(app.VoltageParametersPanel);
@@ -787,7 +798,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             app.MaxforceEditField.Limits = [0 90];
             app.MaxforceEditField.ValueChangedFcn = createCallbackFcn(app, @MaxforceEditFieldValueChanged, true);
             app.MaxforceEditField.Position = [114 134 28 22];
-            app.MaxforceEditField.Value = 30;
+            app.MaxforceEditField.Value = 50;
 
             % Create NLabel
             app.NLabel = uilabel(app.ForceParametersPanel);
@@ -806,7 +817,7 @@ classdef ForceControl_exported < matlab.apps.AppBase
             app.NumberofforcestepsEditField.RoundFractionalValues = 'on';
             app.NumberofforcestepsEditField.ValueChangedFcn = createCallbackFcn(app, @NumberofforcestepsEditFieldValueChanged, true);
             app.NumberofforcestepsEditField.Position = [114 96 28 22];
-            app.NumberofforcestepsEditField.Value = 16;
+            app.NumberofforcestepsEditField.Value = 26;
 
             % Create inclzeroLabel
             app.inclzeroLabel = uilabel(app.ForceParametersPanel);
@@ -852,14 +863,6 @@ classdef ForceControl_exported < matlab.apps.AppBase
             % Create Lamp
             app.Lamp = uilamp(app.UIFigure);
             app.Lamp.Position = [618 220 20 20];
-
-            % Create UIAxes
-            app.UIAxes = uiaxes(app.UIFigure);
-            title(app.UIAxes, 'Data')
-            xlabel(app.UIAxes, 'Time (s)')
-            ylabel(app.UIAxes, 'Voltage (kV)')
-            app.UIAxes.PlotBoxAspectRatio = [1.45226130653266 1 1];
-            app.UIAxes.Position = [54 208 404 278];
 
             % Show the figure after all components are created
             app.UIFigure.Visible = 'on';
