@@ -71,7 +71,8 @@ for i = 1: length(FName)
         exPara.rampTime = exPara.rampTime_step;
         disp('ramping method is not specified')
     end
-    [Time, Volt, Force, Disp, Trigger] = importfile_strainRaw(['raw_', fName]);
+    raw_fName = ['raw_', fName];
+    [Time, Volt, Force, Disp, Trigger] = importfile_strainRaw(fullfile(FName(i).folder, raw_fName));
     Disp = -Disp;
     Force = Force;
     Volt = correctTimedelay(Volt);
