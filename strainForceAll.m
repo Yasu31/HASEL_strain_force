@@ -84,6 +84,24 @@ for i = 1: length(FName)
         end
         Data(i, forceStep) = detectStrain_cnv(Time, Force_fil, Disp_fil, forceStep, exPara, 0);
     end
+
+    % save the processed data in Data to a file
+    processed_fName = ['processed_', fName];
+    fid = fopen(fullfile(FName(i).folder, processed_fName), 'w');
+    % write header
+    fprintf(fid, 'Force [N], Strain_mean [mm]');
+    for repeat_i = 1: exPara.inputRepeat
+        fprintf(fid, ', Strain_raw_%d [mm]', repeat_i);
+    end
+    fprintf(fid, '\n');
+    for forceStep = 1: exPara.numForceSteps
+        fprintf(fid, '%f, %f', Data(i, forceStep).force, Data(i, forceStep).strain);
+        for j = 1: exPara.inputRepeat
+            fprintf(fid, ', %f', Data(i, forceStep).strain_raw(j));
+        end
+        fprintf(fid, '\n');
+    end
+    disp(['processed data is saved in ', processed_fName])
     
     
     
